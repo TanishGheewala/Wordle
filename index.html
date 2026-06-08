@@ -53,6 +53,7 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
+      gap: 8px;
     }
 
     header h1 {
@@ -61,23 +62,70 @@
       font-size: 1.05rem;
       letter-spacing: 0.16em;
       color: var(--text);
+      flex-shrink: 0;
     }
 
     .header-right {
       display: flex;
       align-items: center;
-      gap: 14px;
+      gap: 10px;
     }
 
     #score-display {
-      font-size: 0.66rem;
-      letter-spacing: 0.16em;
-      color: var(--muted);
+      font-size: 0.78rem;
+      letter-spacing: 0.08em;
+      color: var(--text);
+      white-space: nowrap;
+      display: flex;
+      align-items: baseline;
+      gap: 3px;
     }
 
     #score-display b {
+      font-weight: 700;
+      font-size: 0.92rem;
       color: var(--text);
+      font-variant-numeric: tabular-nums;
+    }
+
+    #score-display .pts-label {
+      color: var(--muted);
+      font-size: 0.65rem;
+      letter-spacing: 0.12em;
+    }
+
+    #hint-btn {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 5px 9px;
+      cursor: pointer;
+      color: var(--muted);
+      font-family: 'DM Mono', monospace;
+      font-size: 0.62rem;
       font-weight: 500;
+      letter-spacing: 0.1em;
+      transition: border-color 0.15s, color 0.15s, background 0.15s;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    #hint-btn:hover {
+      border-color: var(--muted);
+      color: var(--text);
+    }
+
+    #hint-btn:active {
+      background: var(--border);
+    }
+
+    #hint-btn .hint-cost {
+      color: var(--text);
+      font-weight: 700;
+      opacity: 0.7;
     }
 
     #theme-toggle {
@@ -275,6 +323,18 @@
     .cell.present { background: var(--present); border-color: var(--present); color: var(--present-t); }
     .cell.correct { background: var(--correct); border-color: var(--correct); color: var(--correct-t); }
 
+    .cell.hinted {
+      border-color: var(--muted);
+      border-style: dashed;
+      color: var(--muted);
+    }
+
+    #hint-btn:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+
     @keyframes shake {
       0%,100% { transform: translateX(0); }
       20%     { transform: translateX(-5px); }
@@ -349,6 +409,15 @@
         padding-top: 12px;
       }
 
+      .header-right {
+        gap: 7px;
+      }
+
+      #hint-btn {
+        padding: 5px 7px;
+        font-size: 0.58rem;
+      }
+
       .divider {
         margin: 8px 0 6px;
       }
@@ -393,7 +462,11 @@
   <header>
     <h1>WORDLE</h1>
     <div class="header-right">
-      <div id="score-display"><b id="score-val">0</b></div>
+      <div id="score-display"><b id="score-val">0</b> <span class="pts-label">pts</span></div>
+      <button id="hint-btn" aria-label="Get a hint for 5 points">
+        <span class="hint-cost">−5</span>
+        <span class="hint-text">HINT</span>
+      </button>
       <button id="theme-toggle" aria-label="Toggle theme"></button>
     </div>
   </header>
@@ -1015,10 +1088,41 @@
     const savedTheme = localStorage.getItem('wrdl_theme') || 'light';
     document.documentElement.setAttribute('data-theme', savedTheme);
 
+    const hintBtn = document.getElementById('hint-btn');
+
     toggleEl.addEventListener('click', () => {
       const next = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
       document.documentElement.setAttribute('data-theme', next);
       localStorage.setItem('wrdl_theme', next);
+    });
+
+    const HINT_COST = 5;
+    let hintUsedThisRow = false;
+
+    function updateHintBtn() {
+      const canAfford = score >= HINT_COST;
+      const rowFull   = currentCol >= COLS;
+      hintBtn.disabled = locked || !canAfford || hintUsedThisRow || rowFull;
+    }
+
+    hintBtn.addEventListener('click', () => {
+      if (locked || hintUsedThisRow || currentCol >= COLS || score < HINT_COST) return;
+
+      const letterToPlace = targetWord[currentCol];
+
+      currentGuess.push(letterToPlace);
+      const cell = getCell(currentRow, currentCol);
+      setCellLetter(currentRow, currentCol, letterToPlace);
+      cell.classList.remove('pop', 'filled');
+      cell.classList.add('filled', 'pop');
+      void cell.offsetWidth;
+      currentCol++;
+
+      hintUsedThisRow = true;
+      score = Math.max(0, score - HINT_COST);
+      saveScore();
+      updateScore();
+      updateHintBtn();
     });
 
     function buildGrid() {
@@ -1142,8 +1246,10 @@
       currentCol   = 0;
       currentGuess = [];
       locked       = false;
+      hintUsedThisRow = false;
       buildGrid();
       updateScore();
+      updateHintBtn();
     }
 
     document.addEventListener('keydown', e => {
@@ -1165,6 +1271,7 @@
       void cell.offsetWidth;
       cell.classList.add('pop');
       currentCol++;
+      updateHintBtn();
     }
 
     function deleteLetter() {
@@ -1173,7 +1280,12 @@
       currentGuess.pop();
       const cell = getCell(currentRow, currentCol);
       setCellLetter(currentRow, currentCol, '');
+      if (cell.classList.contains('hinted')) {
+        cell.classList.remove('hinted');
+        hintUsedThisRow = false;
+      }
       cell.classList.remove('filled', 'pop');
+      updateHintBtn();
     }
 
     function submitGuess() {
@@ -1192,6 +1304,7 @@
       }
 
       locked = true;
+      updateHintBtn();
 
       const results = evaluateGuess(guess);
 
@@ -1218,6 +1331,8 @@
           currentCol   = 0;
           currentGuess = [];
           locked       = false;
+          hintUsedThisRow = false;
+          updateHintBtn();
         }
       });
     }
