@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>WORDLE</title>
+  <title>Wordle</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=STIX+Two+Text:wght@400;600;700&display=swap');
 
@@ -56,61 +56,67 @@
       gap: 8px;
     }
 
+    .header-left {
+      position: relative;
+      display: flex;
+      align-items: center;
+      flex-shrink: 0;
+    }
+
     header h1 {
       font-family: 'STIX Two Text', serif;
       font-weight: 700;
       font-size: 1.05rem;
       letter-spacing: 0.16em;
       color: var(--text);
-      flex-shrink: 0;
+      transition: opacity 0.15s;
+    }
+
+    .header-left.has-streak h1 {
+      opacity: 0;
+      pointer-events: none;
     }
 
     .header-right {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 8px;
     }
 
     #win-fire {
-      display: none;
-      position: relative;
-      width: 30px;
-      height: 30px;
-      font-size: 1.35rem;
-      line-height: 1;
-      flex-shrink: 0;
+      position: absolute;
+      left: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      display: inline-flex;
       align-items: center;
-      justify-content: center;
+      gap: 3px;
+      flex-shrink: 0;
+      background: var(--border);
+      border-radius: 999px;
+      padding: 3px 8px 3px 6px;
+      visibility: hidden;
+      opacity: 0;
+      transition: opacity 0.2s;
     }
 
     #win-fire.show {
-      display: inline-flex;
+      visibility: visible;
+      opacity: 1;
     }
 
     #win-fire .fire-emoji {
-      display: block;
-      transform: translateY(1px);
+      font-size: 0.95rem;
+      line-height: 1;
     }
 
     #win-fire .streak-count {
-      position: absolute;
-      left: 50%;
-      top: 50%;
-      transform: translate(-50%, -47%);
-      min-width: 16px;
-      height: 16px;
-      padding: 0 4px;
-      border-radius: 999px;
-      background: var(--bg);
-      color: var(--text);
-      border: 1px solid var(--border);
       font-family: 'DM Mono', monospace;
-      font-size: 0.58rem;
+      font-size: 0.72rem;
       font-weight: 700;
-      line-height: 14px;
-      text-align: center;
+      color: var(--text);
       font-variant-numeric: tabular-nums;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.12);
+      line-height: 1;
     }
 
     #score-display {
@@ -456,7 +462,7 @@
       }
 
       .header-right {
-        gap: 7px;
+        gap: 6px;
       }
 
       #hint-btn {
@@ -506,12 +512,14 @@
 <body>
 
   <header>
-    <h1>WORDLE</h1>
-    <div class="header-right">
+    <div class="header-left">
+      <h1>WORDLE</h1>
       <span id="win-fire" aria-live="polite" aria-label="No winning streak" title="No winning streak">
         <span class="fire-emoji" aria-hidden="true">🔥</span>
         <span id="streak-count" class="streak-count">0</span>
       </span>
+    </div>
+    <div class="header-right">
       <div id="score-display"><b id="score-val">0</b> <span class="pts-label">pts</span></div>
       <button id="hint-btn" aria-label="Get a hint for 5 points">
         <span class="hint-cost">−5</span>
@@ -1297,6 +1305,7 @@
       streakCountEl.textContent = streak;
       winFireEl.setAttribute('aria-label', hasStreak ? `${streak} word winning streak` : 'No winning streak');
       winFireEl.title = hasStreak ? `${streak} word winning streak` : 'No winning streak';
+      document.querySelector('.header-left').classList.toggle('has-streak', hasStreak);
     }
 
     function pickWord() {
